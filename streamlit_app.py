@@ -28,13 +28,11 @@ if 'color_palette' not in st.session_state:
 
 # Fonction pour changer de langue
 def change_language():
-    # Si la langue actuelle est le français, passer à l'anglais et vice versa
     if st.session_state.language == "fr":
         st.session_state.language = "en"
     else:
         st.session_state.language = "fr"
     
-    # Si l'utilisateur a déjà obtenu un résultat, mettre à jour le texte des résultats
     if st.session_state.technique:
         technique_fr = st.session_state.technique
         technique_en = technique_name_mapping["en"][technique_fr]
@@ -50,11 +48,9 @@ def change_language():
 
 # Fonction pour mettre à jour la palette de couleurs
 def update_color_palette():
-    # Obtenir la palette sélectionnée
     selected_palette = st.session_state.selected_palette
     st.session_state.color_palette = selected_palette
     
-    # Mettre à jour le fichier de configuration avec la nouvelle palette
     colors = get_palette_colors(selected_palette)
     with open(".streamlit/config.toml", "w") as f:
         f.write(f"""[server]
@@ -71,10 +67,10 @@ textColor = "{colors['text']}"
     
     st.rerun()
 
-# Appliquer la palette de couleurs actuelle à la configuration
+# Appliquer la palette de couleurs actuelle
 colors = get_palette_colors(st.session_state.color_palette)
 
-# Configurer la page avec les couleurs actuelles
+# Configurer la page
 st.set_page_config(
     page_title="Programme d'Ancrage Psychothérapeutique",
     page_icon="🧠",
@@ -82,49 +78,36 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Sélecteur de langue et palette de couleurs dans la barre latérale
+# Langue et barre latérale
 lang = st.session_state.language
 with st.sidebar:
-    # Titre et langue
     st.title("🌐")
     if st.button(ui_translations[lang]["language_selector"]):
         change_language()
     
-    # Navigation
     st.markdown("---")
     st.subheader("📍 " + ("Navigation" if lang == "fr" else "Navigation"))
-    
-    # Bouton pour retourner à l'accueil
     if st.button("🏠 " + ("Retour à l'accueil" if lang == "fr" else "Back to home"), key="home_sidebar"):
         st.session_state.current_page = "welcome"
         st.rerun()
     
-    # Afficher le bouton de déconnexion si l'utilisateur est authentifié
     if 'authenticated' in st.session_state and st.session_state.authenticated:
         if st.button("🔓 " + ("Se déconnecter" if lang == "fr" else "Logout"), key="logout_sidebar"):
             st.session_state.authenticated = False
             st.session_state.username = ""
-            # Conserver les entrées du journal en mode invité
             st.rerun()
     
     st.markdown("---")
-    
-    # Paramètres
     st.subheader(ui_translations[lang]["settings_title"])
-    
-    # Section pour la palette de couleurs
     st.caption(ui_translations[lang]["appearance_title"])
     st.write(ui_translations[lang]["color_palette_title"])
     
-    # Obtenir la liste des palettes disponibles
     palettes = get_palette_list(lang)
     palette_options = {p["name"]: p["id"] for p in palettes}
     
-    # Sélecteur de palette de couleurs
     current_palette_info = get_palette_display_info(st.session_state.color_palette, lang)
     st.caption(ui_translations[lang]["color_palette_description"])
     
-    # Utiliser une sélection de radio pour choisir la palette
     selected_palette_name = st.radio(
         label="",
         options=list(palette_options.keys()),
@@ -132,16 +115,12 @@ with st.sidebar:
         key="selected_palette_radio"
     )
     
-    # Mettre à jour la sélection de palette
     st.session_state.selected_palette = palette_options[selected_palette_name]
     
-    # Obtenir les informations sur la palette sélectionnée
     selected_palette_info = get_palette_display_info(st.session_state.selected_palette, lang)
     
-    # Afficher une description de la palette sélectionnée
     st.caption(selected_palette_info["description"])
     
-    # Afficher un aperçu des couleurs
     preview_cols = st.columns(4)
     with preview_cols[0]:
         st.color_picker("Color 1", selected_palette_info["colors"]["primary"], disabled=True, label_visibility="collapsed")
@@ -152,54 +131,48 @@ with st.sidebar:
     with preview_cols[3]:
         st.color_picker("Color 4", selected_palette_info["colors"]["text"], disabled=True, label_visibility="collapsed")
     
-    # Bouton pour appliquer les changements
     if st.session_state.color_palette != st.session_state.selected_palette:
         st.button(ui_translations[lang]["apply_button"], on_click=update_color_palette)
     
-    # Informations sur l'utilisateur connecté (si authentifié)
     if 'authenticated' in st.session_state and st.session_state.authenticated:
         st.markdown("---")
         st.subheader("👤 " + ("Utilisateur" if lang == "fr" else "User"))
         st.info(ui_translations[lang]["logged_in_as"].format(username=st.session_state.username))
         
-    # Ajout du lecteur audio
     add_audio_player_to_sidebar()
 
-# Obtenir les questions en fonction de la langue sélectionnée
 questions = questions_translations[st.session_state.language]
 
 def analyser_reponses(reponses):
-    """Analyse les réponses et détermine la technique d'ancrage"""
     corps_score = 0
     orientation_score = 0
     imagination_score = 0
 
     for i, reponse in enumerate(reponses):
-        if i == 0:  # Question 1 (Yeux fermés)
+        if i == 0:
             if reponse == 1: orientation_score += 1
             elif reponse == 2: corps_score += 1
-        elif i == 1:  # Question 2 (Sensations corporelles)
+        elif i == 1:
             if reponse == 0: corps_score += 2
             elif reponse == 1: imagination_score += 1
-        elif i == 2:  # Question 3 (Réaction émotionnelle)
+        elif i == 2:
             if reponse == 0: corps_score += 1
             elif reponse == 1: orientation_score += 1
             elif reponse == 2: imagination_score += 1
-        elif i == 3:  # Question 4 (Exercice physique)
+        elif i == 3:
             if reponse == 0: corps_score += 1
-        elif i == 4:  # Question 5 (Souvenirs ou imagination)
+        elif i == 4:
             if reponse == 0: imagination_score += 1
             elif reponse == 1: corps_score += 1
-        elif i == 5:  # Question 6 (Distractions)
+        elif i == 5:
             if reponse == 0: imagination_score += 1
             elif reponse == 1: orientation_score += 1
             elif reponse == 2: corps_score += 1
-        elif i == 6:  # Question 7 (Éléments environnementaux)
+        elif i == 6:
             if reponse == 0: orientation_score += 1
             elif reponse == 1: imagination_score += 1
             elif reponse == 2: corps_score += 1
 
-    # Déterminer la technique d'ancrage
     technique_fr = None
     if corps_score > orientation_score and corps_score > imagination_score:
         technique_fr = "Techniques d'ancrage centrées sur le corps"
@@ -210,14 +183,12 @@ def analyser_reponses(reponses):
     else:
         technique_fr = "Mélange de techniques"
         
-    # Retourner la technique dans la langue sélectionnée
     if st.session_state.language == "en":
         return technique_name_mapping["en"][technique_fr]
     else:
         return technique_fr
 
 def reset_questionnaire():
-    """Réinitialise le questionnaire"""
     st.session_state.current_page = "welcome"
     st.session_state.question_index = 0
     st.session_state.responses = []
@@ -226,16 +197,13 @@ def reset_questionnaire():
     st.rerun()
 
 def record_response(response):
-    """Enregistre la réponse et passe à la question suivante"""
     st.session_state.responses.append(response)
     st.session_state.question_index += 1
     
-    # Si toutes les questions ont été posées, afficher la recommandation
     if st.session_state.question_index >= len(questions):
         technique = analyser_reponses(st.session_state.responses)
         st.session_state.technique = technique
         
-        # Récupérer les détails de la technique dans la langue sélectionnée
         if st.session_state.language == "en":
             st.session_state.technique_details = techniques_translations["en"][technique]
         else:
@@ -245,7 +213,6 @@ def record_response(response):
     st.rerun()
 
 def show_welcome():
-    """Affiche la page d'accueil"""
     lang = st.session_state.language
     translations = welcome_translations[lang]
     
@@ -269,7 +236,6 @@ def show_welcome():
               on_click=lambda: setattr(st.session_state, 'current_page', 'questionnaire'))
 
 def show_about():
-    """Affiche la page À propos"""
     lang = st.session_state.language
     translations = about_translations[lang]
     
@@ -309,14 +275,13 @@ def show_about():
 
 def show_questionnaire():
     """Affiche le questionnaire"""
-    lang = st.session_state.language
-    
+    lang = st.session_state.language  # ✅ ligne ajoutée
+
     if lang == "fr":
         st.title("Questionnaire d'Ancrage")
     else:
         st.title("Grounding Questionnaire")
     
-    # Afficher la progression
     progress = st.session_state.question_index / len(questions)
     st.progress(progress)
     
@@ -326,17 +291,14 @@ def show_questionnaire():
     )
     st.write(progress_text)
     
-    # Afficher la question actuelle
     question, options = questions[st.session_state.question_index]
     st.subheader(question)
     
-    # Afficher les options sous forme de boutons
     for i, option in enumerate(options):
         if st.button(option, key=f"option_{i}", use_container_width=True):
             record_response(i)
 
 def show_results():
-    """Affiche les résultats et recommandations"""
     lang = st.session_state.language
     
     if lang == "fr":
@@ -348,7 +310,6 @@ def show_results():
     
     st.markdown(st.session_state.technique_details)
     
-    # Bouton pour la boîte à réussites seulement pour les techniques d'imagination
     if (lang == "fr" and st.session_state.technique == "Techniques d'ancrage centrées sur l'imagination") or \
        (lang == "en" and st.session_state.technique == "Imagination-centered grounding techniques"):
         st.button(ui_translations[lang]["success_box_button"], use_container_width=True, 
@@ -363,24 +324,19 @@ def show_results():
         st.button(ui_translations[lang]["restart_button"], use_container_width=True, 
                   on_click=reset_questionnaire)
 
-# Importer les pages spéciales
 from boite_reussites import show_boite_reussites
 from journal_progres import show_journal_page
 
-# Fonction pour changer de page et ouvrir la boîte à réussites
 def open_boite_reussites():
     st.session_state.current_page = "boite_reussites"
     st.session_state.boite_reussites_details = True
     st.rerun()
 
-# Fonction pour changer de page et ouvrir le journal de progrès
 def open_journal():
     st.session_state.current_page = "journal"
     st.rerun()
 
-# Ajout du bouton de journal sur toutes les pages (sauf le journal lui-même)
 if st.session_state.current_page != "journal":
-    # Placer le bouton en bas de la sidebar
     with st.sidebar:
         st.markdown("---")
         st.button(
@@ -389,7 +345,6 @@ if st.session_state.current_page != "journal":
             use_container_width=True
         )
 
-# Affichage des pages en fonction de l'état de session
 if st.session_state.current_page == "welcome":
     show_welcome()
 elif st.session_state.current_page == "questionnaire":
